@@ -24,3 +24,7 @@
 #### <sub><sup><a name="5390" href="#5390">:link:</a></sup></sub> feature
 
 * Add `--team` flag for `fly set-pipelines` command #5805
+
+#### <sub><sup><a name="5146" href="#5146">:link:</a></sup></sub> feature
+
+* Refactor TSA to use Concourse's gclient which has a configurable timeout #5146
