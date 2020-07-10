@@ -31,12 +31,12 @@ var _ = Describe("vars_tracker", func() {
 			It("fetched variables are tracked", func() {
 				tracker.Get(VariableDefinition{Name: "k1"})
 				tracker.Get(VariableDefinition{Name: "k2"})
-				mapit := NewMapCredVarsTrackerIterator()
+				mapit := MapCredVarsTrackerIterator{}
 				tracker.IterateInterpolatedCreds(mapit)
-				Expect(mapit.Data["k1"]).To(Equal("v1"))
-				Expect(mapit.Data["k2"]).To(Equal("v2"))
+				Expect(mapit["k1"]).To(Equal("v1"))
+				Expect(mapit["k2"]).To(Equal("v2"))
 				// "k3" has not been Get, thus should not be tracked.
-				Expect(mapit.Data["k3"]).To(BeNil())
+				Expect(mapit).ToNot(ContainElement("k3"))
 			})
 		})
 
@@ -68,10 +68,32 @@ var _ = Describe("vars_tracker", func() {
 
 				It("fetched variables are tracked", func() {
 					tracker.Get(VariableDefinition{Name: ".:foo"})
-					mapit := NewMapCredVarsTrackerIterator()
+					mapit := MapCredVarsTrackerIterator{}
 					tracker.IterateInterpolatedCreds(mapit)
-					Expect(mapit.Data["foo"]).To(Equal("bar"))
+					Expect(mapit["foo"]).To(Equal("bar"))
 				})
+			})
+		})
+
+		Describe("NewLocalScope", func() {
+			It("copies all existing local vars", func() {
+				tracker.AddLocalVar("hello", "world", false)
+				scope := tracker.NewLocalScope()
+				val, _, _ := scope.Get(VariableDefinition{Name: ".:hello"})
+				Expect(val).To(Equal("world"))
+			})
+
+			It("adding local vars does not affect the original tracker", func() {
+				scope := tracker.NewLocalScope()
+				scope.AddLocalVar("hello", "world", false)
+				_, found, _ := tracker.Get(VariableDefinition{Name: ".:hello"})
+				Expect(found).To(BeFalse())
+			})
+
+			It("shares the underlying non-local variables", func() {
+				scope := tracker.NewLocalScope()
+				val, _, _ := scope.Get(VariableDefinition{Name: "k1"})
+				Expect(val).To(Equal("v1"))
 			})
 		})
 
@@ -94,9 +116,9 @@ var _ = Describe("vars_tracker", func() {
 
 			It("fetched variables are not tracked", func() {
 				tracker.Get(VariableDefinition{Name: ".:foo"})
-				mapit := NewMapCredVarsTrackerIterator()
+				mapit := MapCredVarsTrackerIterator{}
 				tracker.IterateInterpolatedCreds(mapit)
-				Expect(mapit.Data["foo"]).To(BeNil())
+				Expect(mapit).ToNot(ContainElement("foo"))
 			})
 		})
 	})
@@ -123,11 +145,11 @@ var _ = Describe("vars_tracker", func() {
 			It("fetched variables should not be tracked", func() {
 				tracker.Get(VariableDefinition{Name: "k1"})
 				tracker.Get(VariableDefinition{Name: "k2"})
-				mapit := NewMapCredVarsTrackerIterator()
+				mapit := MapCredVarsTrackerIterator{}
 				tracker.IterateInterpolatedCreds(mapit)
-				Expect(mapit.Data["k1"]).To(BeNil())
-				Expect(mapit.Data["k2"]).To(BeNil())
-				Expect(mapit.Data["k3"]).To(BeNil())
+				Expect(mapit).ToNot(ContainElement("k1"))
+				Expect(mapit).ToNot(ContainElement("k2"))
+				Expect(mapit).ToNot(ContainElement("k3"))
 			})
 		})
 
