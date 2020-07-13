@@ -65,6 +65,7 @@ type DomID
     | PipelineStatusIcon Concourse.PipelineIdentifier
     | PipelineButton Concourse.PipelineIdentifier
     | VisibilityButton Concourse.PipelineIdentifier
+    | PipelineCardFavoritedIcon Concourse.PipelineIdentifier
     | FooterCliIcon Cli.Cli
     | WelcomeCardCliIcon Cli.Cli
     | CopyTokenButton

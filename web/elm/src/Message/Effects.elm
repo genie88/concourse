@@ -680,6 +680,12 @@ toHtmlID domId =
                 ++ Base64.encode p.pipelineName
                 ++ "_visibility"
 
+        PipelineCardFavoritedIcon p ->
+            Base64.encode p.teamName
+                ++ "_"
+                ++ Base64.encode p.pipelineName
+                ++ "_favorite"
+
         FirstOccurrenceGetStepLabel stepID ->
             stepID ++ "_first_occurrence"
 

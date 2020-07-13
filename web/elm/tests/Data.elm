@@ -160,6 +160,7 @@ dashboardPipeline id public =
     , archived = False
     , stale = False
     , jobsDisabled = False
+    , isFavorited = False
     }
 
 

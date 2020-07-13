@@ -1,5 +1,6 @@
 module Dashboard.Pipeline exposing
-    ( hdPipelineView
+    ( favoritedView
+    , hdPipelineView
     , pipelineNotSetView
     , pipelineStatus
     , pipelineView
@@ -328,6 +329,9 @@ footerView userState pipeline now hovered existingJobs =
                     HoverState.isHovered (VisibilityButton pipelineId) hovered
                 , isVisibilityLoading = pipeline.isVisibilityLoading
                 }
+
+        favoritedIcon =
+            favoritedView pipeline pipelineId
     in
     Html.div
         (class "card-footer" :: Styles.pipelineCardFooter)
@@ -337,10 +341,10 @@ footerView userState pipeline now hovered existingJobs =
           <|
             List.intersperse spacer
                 (if pipeline.archived then
-                    [ visibilityButton ]
+                    [ visibilityButton, favoritedIcon ]
 
                  else
-                    [ pauseToggle, visibilityButton ]
+                    [ pauseToggle, visibilityButton, favoritedIcon ]
                 )
         ]
 
@@ -398,6 +402,27 @@ pipelineStatusView pipeline status now =
                 transitionView now status
             ]
         )
+
+
+favoritedView : Pipeline -> Concourse.PipelineIdentifier -> Html Message
+favoritedView p pid =
+    Html.div
+        [ style "display" "flex"
+        , class "pipeline-fav"
+        ]
+        [ if p.isFavorited then
+            Icon.icon { sizePx = 20, image = Assets.StarIconFilled }
+                ([ style "opacity" "0.5"
+                 , id <| Effects.toHtmlID <| PipelineCardFavoritedIcon pid
+                 , onMouseEnter <| Hover <| Just <| PipelineCardFavoritedIcon pid
+                 ]
+                    ++ Styles.pipelineStatusIcon
+                )
+
+          else
+            Icon.icon { sizePx = 20, image = Assets.StarIconUnfilled }
+                []
+        ]
 
 
 visibilityView :
