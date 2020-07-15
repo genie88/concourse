@@ -331,7 +331,17 @@ footerView userState pipeline now hovered existingJobs =
                 }
 
         favoritedIcon =
-            favoritedView pipeline pipelineId
+            favoritedView
+                { isFavorited = pipeline.isFavorited
+                , isClickable =
+                    UserState.isAnonymous userState
+                        || UserState.isMember
+                            { teamName = pipeline.teamName
+                            , userState = userState
+                            }
+                , isHovered = HoverState.isHovered (PipelineCardFavoritedIcon pipelineId) hovered
+                , pipelineId = pipelineId
+                }
     in
     Html.div
         (class "card-footer" :: Styles.pipelineCardFooter)
@@ -404,25 +414,32 @@ pipelineStatusView pipeline status now =
         )
 
 
-favoritedView : Pipeline -> Concourse.PipelineIdentifier -> Html Message
-favoritedView p pid =
+favoritedView :
+    { isFavorited : Bool
+    , isClickable : Bool
+    , isHovered : Bool
+    , pipelineId : Concourse.PipelineIdentifier
+    }
+    -> Html Message
+favoritedView { isFavorited, isClickable, isHovered, pipelineId } =
     Html.div
-        [ style "display" "flex"
-        , class "pipeline-fav"
-        ]
-        [ if p.isFavorited then
-            Icon.icon { sizePx = 20, image = Assets.StarIconFilled }
-                ([ style "opacity" "0.5"
-                 , id <| Effects.toHtmlID <| PipelineCardFavoritedIcon pid
-                 , onMouseEnter <| Hover <| Just <| PipelineCardFavoritedIcon pid
-                 ]
-                    ++ Styles.pipelineStatusIcon
-                )
+        (Styles.favoritedToggle
+            { isFavorited = isFavorited
+            , isClickable = isClickable
+            , isHovered = isHovered
+            }
+            ++ [ onMouseEnter <| Hover <| Just <| PipelineCardFavoritedIcon pipelineId
+               , onMouseLeave <| Hover Nothing
+               , id <| Effects.toHtmlID <| PipelineCardFavoritedIcon pipelineId
+               ]
+            ++ (if isClickable then
+                    [ onClick <| Click <| PipelineCardFavoritedIcon pipelineId ]
 
-          else
-            Icon.icon { sizePx = 20, image = Assets.StarIconUnfilled }
-                []
-        ]
+                else
+                    []
+               )
+        )
+        []
 
 
 visibilityView :

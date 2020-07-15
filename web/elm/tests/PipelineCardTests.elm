@@ -34,10 +34,8 @@ import DashboardTests
         , white
         )
 import Data
-import Dict
 import Expect exposing (Expectation)
 import Html.Attributes as Attr
-import Http
 import Message.Callback as Callback
 import Message.Effects as Effects
 import Message.Message as Msgs
@@ -2433,12 +2431,243 @@ all =
                                 |> Tuple.second
                                 |> Expect.equal [ Effects.RedirectToLogin ]
                     ]
+                , describe "favorited icon" <|
+                    let
+                        pipelineId =
+                            { pipelineName = "pipeline"
+                            , teamName = "team"
+                            }
 
-                -- , describe "favorited icon"
-                --     [ test "is clickable" <|
-                --         \_ -> whenOnDahBoard
-                --     ]
-                -- -- TODO by zoe
+                        unfilledFavoritedIcon =
+                            iconSelector
+                                { size = "20px"
+                                , image = Assets.StarIconUnfilled
+                                }
+                                ++ [ style "background-size" "contain" ]
+
+                        filledFavoritedIcon =
+                            iconSelector
+                                { size = "20px"
+                                , image = Assets.StarIconFilled
+                                }
+                                ++ [ style "background-size" "contain" ]
+
+                        favoritedToggle =
+                            Common.queryView
+                                >> Query.find [ class "card-footer" ]
+                                >> Query.children []
+                                >> Query.index -1
+                                >> Query.children []
+                                >> Query.index -1
+
+                        favoritedIconUnclickable setup =
+                            [ defineHoverBehaviour
+                                { name = "favorited icon toggle"
+                                , setup =
+                                    whenOnDashboard { highDensity = False }
+                                        |> setup
+                                        |> Tuple.first
+                                , query = favoritedToggle
+                                , unhoveredSelector =
+                                    { description = "faded 20px square"
+                                    , selector =
+                                        filledFavoritedIcon
+                                            ++ [ style "opacity" "0.5"
+                                               , style "cursor" "default"
+                                               ]
+                                    }
+                                , hoverable =
+                                    Msgs.PipelineCardFavoritedIcon pipelineId
+                                , hoveredSelector =
+                                    { description = "faded 20px square"
+                                    , selector =
+                                        unfilledFavoritedIcon
+                                            ++ [ style "opacity" "0.5"
+                                               , style "cursor" "default"
+                                               ]
+                                    }
+                                }
+                            , test "has no click handler" <|
+                                \_ ->
+                                    whenOnDashboard { highDensity = False }
+                                        |> setup
+                                        |> Tuple.first
+                                        |> favoritedToggle
+                                        |> Event.simulate Event.click
+                                        |> Event.toResult
+                                        |> Expect.err
+                            ]
+
+                        favoritedIconClickable setup =
+                            [ defineHoverBehaviour
+                                { name = "open eye toggle"
+                                , setup =
+                                    whenOnDashboard { highDensity = False }
+                                        |> setup
+                                        |> Tuple.first
+                                , query = favoritedToggle
+                                , unhoveredSelector =
+                                    { description = "faded 20px square"
+                                    , selector =
+                                        unfilledFavoritedIcon
+                                            ++ [ style "opacity" "0.5"
+                                               , style "cursor" "pointer"
+                                               ]
+                                    }
+                                , hoverable =
+                                    Msgs.PipelineCardFavoritedIcon pipelineId
+                                , hoveredSelector =
+                                    { description = "bright 20px square"
+                                    , selector =
+                                        unfilledFavoritedIcon
+                                            ++ [ style "opacity" "1"
+                                               , style "cursor" "pointer"
+                                               ]
+                                    }
+                                }
+                            , test "has click handler" <|
+                                \_ ->
+                                    whenOnDashboard { highDensity = False }
+                                        |> setup
+                                        |> Tuple.first
+                                        |> favoritedToggle
+                                        |> Event.simulate Event.click
+                                        |> Event.expect
+                                            (ApplicationMsgs.Update <|
+                                                Msgs.Click <|
+                                                    Msgs.VisibilityButton
+                                                        pipelineId
+                                            )
+                            , test "click has HidePipeline effect" <|
+                                \_ ->
+                                    whenOnDashboard { highDensity = False }
+                                        |> setup
+                                        |> Tuple.first
+                                        |> Application.update
+                                            (ApplicationMsgs.Update <|
+                                                Msgs.Click <|
+                                                    Msgs.PipelineCardFavoritedIcon
+                                                        pipelineId
+                                            )
+                                        |> Tuple.second
+                                        |> Expect.equal
+                                            [ Effects.ChangeVisibility
+                                                Msgs.Hide
+                                                pipelineId
+                                            ]
+                            , test "401 redirects to login" <|
+                                \_ ->
+                                    whenOnDashboard { highDensity = False }
+                                        |> setup
+                                        |> Tuple.first
+                                        |> Application.update
+                                            (ApplicationMsgs.Update <|
+                                                Msgs.Click <|
+                                                    Msgs.PipelineCardFavoritedIcon
+                                                        pipelineId
+                                            )
+                                        |> Tuple.first
+                                        |> Application.handleCallback
+                                            (Callback.VisibilityChanged
+                                                Msgs.Hide
+                                                pipelineId
+                                                Data.httpUnauthorized
+                                            )
+                                        |> Tuple.second
+                                        |> Expect.equal
+                                            [ Effects.RedirectToLogin ]
+                            ]
+                    in
+                    [ describe "when authorized" <|
+                        let
+                            whenAuthorizedPublic =
+                                givenDataAndUser
+                                    (apiData [ ( "team", [] ) ])
+                                    (userWithRoles
+                                        [ ( "team", [ "owner" ] ) ]
+                                    )
+                                    >> Tuple.first
+                                    >> Application.handleCallback
+                                        (Callback.AllPipelinesFetched <|
+                                            Ok
+                                                [ Data.pipeline "team" 0 |> Data.withName "pipeline" ]
+                                        )
+
+                            whenAuthorizedNonPublic =
+                                givenDataAndUser
+                                    (apiData [ ( "team", [] ) ])
+                                    (userWithRoles
+                                        [ ( "team", [ "owner" ] ) ]
+                                    )
+                                    >> Tuple.first
+                                    >> Application.handleCallback
+                                        (Callback.AllPipelinesFetched <|
+                                            Ok
+                                                [ Data.pipeline "team" 0
+                                                    |> Data.withName "pipeline"
+                                                    |> Data.withPublic False
+                                                ]
+                                        )
+                        in
+                        [ describe "on public pipeline" <|
+                            -- TODO by zoe: rewirte the tests here
+                            favoritedIconClickable whenAuthorizedPublic
+                        , describe "on a non-public pipeline" <|
+                            favoritedIconClickable whenAuthorizedNonPublic
+                        ]
+                    , describe "able to favorite pieplines on other teams" <|
+                        let
+                            whenUnauthorizedPublic =
+                                givenDataAndUser
+                                    (apiData [ ( "team", [] ) ])
+                                    (userWithRoles
+                                        [ ( "team", [ "viewer" ] ) ]
+                                    )
+                                    >> Tuple.first
+                                    >> Application.handleCallback
+                                        (Callback.AllPipelinesFetched <|
+                                            Ok
+                                                [ Data.pipeline "team" 0 |> Data.withName "pipeline" ]
+                                        )
+
+                            whenUnauthorizedNonPublic =
+                                givenDataAndUser
+                                    (apiData [ ( "team", [] ) ])
+                                    (userWithRoles
+                                        [ ( "team", [ "viewer" ] ) ]
+                                    )
+                                    >> Tuple.first
+                                    >> Application.handleCallback
+                                        (Callback.AllPipelinesFetched <|
+                                            Ok
+                                                [ Data.pipeline "team" 0
+                                                    |> Data.withName "pipeline"
+                                                    |> Data.withPublic False
+                                                ]
+                                        )
+                        in
+                        [ describe "on public pipeline" <|
+                            favoritedIconUnclickable whenUnauthorizedPublic
+                        , describe "on a non-public pipeline" <|
+                            favoritedIconUnclickable
+                                whenUnauthorizedNonPublic
+                        ]
+                    , describe "when unauthenticated" <|
+                        let
+                            whenUnauthenticated =
+                                givenDataUnauthenticated
+                                    (apiData [ ( "team", [] ) ])
+                                    >> Tuple.first
+                                    >> Application.handleCallback
+                                        (Callback.AllPipelinesFetched <|
+                                            Ok
+                                                [ Data.pipeline "team" 0 |> Data.withName "pipeline" ]
+                                        )
+                        in
+                        [ describe "on public pipeline" <|
+                            favoritedIconUnclickable whenUnauthenticated
+                        ]
+                    ]
                 ]
             ]
         ]
